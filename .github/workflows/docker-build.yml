@@ -50,15 +50,15 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-  - name: Build and Push Image
-    uses: docker/build-push-action@v5
-    with:
-      context: ./services
-      file: ${{ matrix.service == 'frontend' && '../frontend/Dockerfile' || format('./{0}/Dockerfile', matrix.service) }}
-      push: true
-      tags: |
-        ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:1.0.1
-        ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:latest
+    - name: Build and Push Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./services
+        file: ${{ matrix.service == 'frontend' && '../frontend/Dockerfile' || format('./{0}/Dockerfile', matrix.service) }}
+        push: true
+        tags: |
+          ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:1.0.1
+          ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:latest
 
 
     # - name: Build and Push Image
