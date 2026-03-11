@@ -1,7 +1,14 @@
 FROM node:18-alpine
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
+# copy dependency manifests
+COPY services/product-service/package*.json ./
+
+# install dependencies
+RUN npm ci --omit=dev
+
+# copy service source
+COPY services/product-service/ ./
+
 EXPOSE 3003
+
 CMD ["npm", "start"]

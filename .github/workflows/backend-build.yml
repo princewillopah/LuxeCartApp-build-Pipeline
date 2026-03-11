@@ -57,7 +57,7 @@ jobs:
         file: services/${{ matrix.service }}/Dockerfile
         push: true
         tags: |
-          ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:1.0.2
+          ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:1.0.3
           ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:latest
 
 
