@@ -34,7 +34,6 @@ jobs:
           - inventory-service
           - search-service
           - api-gateway-service
-          - frontend
 
     steps:
 
