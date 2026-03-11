@@ -1,8 +1,7 @@
 FROM node:18-alpine
 WORKDIR /app
-COPY notification-service/package*.json ./
+COPY package*.json ./
 RUN npm ci --only=production
-COPY notification-service/ .
-COPY shared/ ./shared/
+COPY . .
 EXPOSE 3009
 CMD ["npm", "start"]

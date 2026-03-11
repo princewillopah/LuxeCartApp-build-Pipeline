@@ -1,7 +1,7 @@
 FROM node:18-alpine
 WORKDIR /app
-COPY review-service/package*.json ./
+COPY package*.json ./
 RUN npm ci --only=production
-COPY review-service/ .
+COPY . .
 EXPOSE 3006
 CMD ["npm", "start"]

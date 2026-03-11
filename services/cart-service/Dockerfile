@@ -1,7 +1,7 @@
 FROM node:18-alpine
 WORKDIR /app
-COPY cart-service/package*.json ./
+COPY package*.json ./
 RUN npm ci --only=production
-COPY cart-service/ .
+COPY . .
 EXPOSE 3004
 CMD ["npm", "start"]

@@ -3,6 +3,5 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 COPY . .
-# COPY shared/ ./shared/
 EXPOSE 3008
 CMD ["npm", "start"]
