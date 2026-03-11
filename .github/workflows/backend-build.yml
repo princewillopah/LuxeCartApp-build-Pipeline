@@ -53,11 +53,11 @@ jobs:
     - name: Build and Push Image
       uses: docker/build-push-action@v5
       with:
-        context: ./services
-        file: ${{ matrix.service == 'frontend' && '../frontend/Dockerfile' || format('./{0}/Dockerfile', matrix.service) }}
+        context: .
+        file: services/${{ matrix.service }}/Dockerfile
         push: true
         tags: |
-          ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:1.0.1
+          ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:1.0.2
           ${{ env.IMAGE_NAMESPACE }}/luxecart-${{ matrix.service }}:latest
 
 
