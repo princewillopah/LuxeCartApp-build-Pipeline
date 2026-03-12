@@ -64,15 +64,30 @@ async def track_metrics(request, call_next):
 mongo_client = None
 db = None
 
-# Email configuration
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "noreply@luxecart.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")  # Set in production
+# # Email configuration
+# # SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+# SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+# # SMTP_USER = os.getenv("SMTP_USER", "noreply@luxecart.com")
+# # SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")  # Set in production
+# FROM_EMAIL = os.getenv("FROM_EMAIL", "LuxeCart <noreply@luxecart.com>")
+
+
+# RABBITMQ_URL = os.environ["RABBITMQ_URL"]
+# MONGODB_URL = os.environ["MONGODB_URL"]
+
+# SMTP_HOST = os.environ["SMTP_HOST"]
+# SMTP_USER = os.environ["SMTP_USER"]
+# SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
+
+SMTP_HOST = os.environ["SMTP_HOST"]
+SMTP_PORT = int(os.environ["SMTP_PORT"])
+SMTP_USER = os.environ["SMTP_USER"]
+SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
+
 FROM_EMAIL = os.getenv("FROM_EMAIL", "LuxeCart <noreply@luxecart.com>")
 
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://mongodb:27017")
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://ecommerce:ecommerce123@rabbitmq:5672")
+MONGODB_URL = os.environ["MONGODB_URL"]
+RABBITMQ_URL = os.environ["RABBITMQ_URL"]
 
 
 @app.on_event("startup")
