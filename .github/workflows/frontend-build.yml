@@ -1,4 +1,4 @@
-name: Build Frontend Image
+name: Build and Push LuxeCart Frontend Services Images
 
 on:
   push:
@@ -34,5 +34,5 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ${{ env.IMAGE_NAMESPACE }}/luxecart-frontend:1.0.3
+            ${{ env.IMAGE_NAMESPACE }}/luxecart-frontend:1.0.4
             ${{ env.IMAGE_NAMESPACE }}/luxecart-frontend:latest
