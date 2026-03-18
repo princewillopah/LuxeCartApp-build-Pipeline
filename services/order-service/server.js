@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const { publishEvent } = require('./shared/eventBus');
+// Prometheus metrics
+const promClient = require('prom-client');
+const register = new promClient.Registry();
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -15,6 +18,61 @@ app.use(express.json());
 
 app.get('/health', (req, res) => {
   res.json({ status: 'Order Service is running' });
+});
+
+
+///// prometheus
+register.setDefaultLabels({
+  service: 'order-service'
+});
+
+promClient.collectDefaultMetrics({ register });
+
+const httpRequestCounter = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['service', 'method', 'route', 'status']
+});
+
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request latency',
+  labelNames: ['service', 'method', 'route'],
+  buckets: [0.1, 0.3, 0.5, 1, 2, 5]
+});
+
+register.registerMetric(httpRequestCounter);
+register.registerMetric(httpRequestDuration);
+
+// ✅ middleware
+app.use((req, res, next) => {
+  if (req.path === '/metrics') return next(); 
+
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+
+    const route = req.route?.path || req.path || 'unknown';
+
+    httpRequestCounter.inc({
+      service: 'order-service',
+      method: req.method,
+      route,
+      status: res.statusCode
+    });
+
+    httpRequestDuration.observe(
+      {
+        service: 'order-service',
+        method: req.method,
+        route
+      },
+      duration
+    );
+  });
+
+  next();
 });
 
 // Create order
@@ -184,10 +242,8 @@ app.patch('/:id/status', async (req, res) => {
   }
 });
 
-// Prometheus metrics
-const promClient = require('prom-client');
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
+
+
 
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);

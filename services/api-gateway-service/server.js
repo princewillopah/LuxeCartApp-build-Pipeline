@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
+// Prometheus metrics
+const promClient = require('prom-client');
+const register = new promClient.Registry();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -75,6 +78,62 @@ const requireAdmin = (req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'API Gateway is running', timestamp: new Date().toISOString() });
 });
+
+
+///// prometheus
+register.setDefaultLabels({
+  service: 'api-gateway-service'
+});
+
+promClient.collectDefaultMetrics({ register });
+
+const httpRequestCounter = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['service', 'method', 'route', 'status']
+});
+
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request latency',
+  labelNames: ['service', 'method', 'route'],
+  buckets: [0.1, 0.3, 0.5, 1, 2, 5]
+});
+
+register.registerMetric(httpRequestCounter);
+register.registerMetric(httpRequestDuration);
+
+// ✅ middleware
+app.use((req, res, next) => {
+  if (req.path === '/metrics') return next(); 
+
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+
+    const route = req.route?.path || req.path || 'unknown';
+
+    httpRequestCounter.inc({
+      service: 'api-gateway-service',
+      method: req.method,
+      route,
+      status: res.statusCode
+    });
+
+    httpRequestDuration.observe(
+      {
+        service: 'api-gateway-service',
+        method: req.method,
+        route
+      },
+      duration
+    );
+  });
+
+  next();
+});
+
 
 // Proxy configuration with increased timeout
 const proxyOptions = {
@@ -227,10 +286,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Prometheus metrics
-const promClient = require('prom-client');
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
+
 
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);

@@ -1,19 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+// Prometheus metrics
 const promClient = require('prom-client');
+const register = new promClient.Registry();
+
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// Prometheus setup (single instance, top-level)
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
 
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
+
+
 
 // Database
 const pool = new Pool({
@@ -25,6 +23,61 @@ app.use(express.json());
 
 app.get('/health', (req, res) => {
   res.json({ status: 'User Service is running' });
+});
+
+
+///// prometheus
+register.setDefaultLabels({
+  service: 'user-service'
+});
+
+promClient.collectDefaultMetrics({ register });
+
+const httpRequestCounter = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['service', 'method', 'route', 'status']
+});
+
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request latency',
+  labelNames: ['service', 'method', 'route'],
+  buckets: [0.1, 0.3, 0.5, 1, 2, 5]
+});
+
+register.registerMetric(httpRequestCounter);
+register.registerMetric(httpRequestDuration);
+
+// ✅ middleware
+app.use((req, res, next) => {
+  if (req.path === '/metrics') return next(); 
+
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+
+    const route = req.route?.path || req.path || 'unknown';
+
+    httpRequestCounter.inc({
+      service: 'user-service',
+      method: req.method,
+      route,
+      status: res.statusCode
+    });
+
+    httpRequestDuration.observe(
+      {
+        service: 'user-service',
+        method: req.method,
+        route
+      },
+      duration
+    );
+  });
+
+  next();
 });
 
 // Get all users
@@ -85,6 +138,12 @@ app.delete('/:id', async (req, res) => {
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
+});
+
+
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Start server

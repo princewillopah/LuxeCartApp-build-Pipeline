@@ -3,18 +3,17 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const { publishEvent } = require('./shared/eventBus');
 const promClient = require('prom-client');
+// Prometheus metrics
+const promClient = require('prom-client');
+const register = new promClient.Registry();
 
 const app = express();
 const PORT = process.env.PORT || 3008;
 
-// Prometheus setup (single instance, top-level)
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
 
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
+
+
+
 
 // Database
 const pool = new Pool({
@@ -31,6 +30,62 @@ app.get('/health', async (req, res) => {
   } catch (err) {
     res.status(503).json({ status: 'Payment Service running', database: 'disconnected' });
   }
+});
+
+
+
+///// prometheus
+register.setDefaultLabels({
+  service: 'payment-service'
+});
+
+promClient.collectDefaultMetrics({ register });
+
+const httpRequestCounter = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['service', 'method', 'route', 'status']
+});
+
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request latency',
+  labelNames: ['service', 'method', 'route'],
+  buckets: [0.1, 0.3, 0.5, 1, 2, 5]
+});
+
+register.registerMetric(httpRequestCounter);
+register.registerMetric(httpRequestDuration);
+
+// ✅ middleware
+app.use((req, res, next) => {
+  if (req.path === '/metrics') return next(); 
+
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+
+    const route = req.route?.path || req.path || 'unknown';
+
+    httpRequestCounter.inc({
+      service: 'payment-service',
+      method: req.method,
+      route,
+      status: res.statusCode
+    });
+
+    httpRequestDuration.observe(
+      {
+        service: 'payment-service',
+        method: req.method,
+        route
+      },
+      duration
+    );
+  });
+
+  next();
 });
 
 // Process payment
@@ -136,6 +191,12 @@ app.post('/validate-card', (req, res) => {
   // Mock validation logic
   const isValid = cardNumber.length >= 13 && expiryDate.match(/^\d{2}\/\d{2}$/) && cvv.length === 3;
   res.json({ valid: isValid, message: isValid ? 'Card valid' : 'Card invalid' });
+});
+
+
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Start server

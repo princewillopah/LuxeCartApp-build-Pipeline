@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const redis = require('redis');
+// Prometheus metrics
+const promClient = require('prom-client');
+const register = new promClient.Registry();
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -36,6 +39,63 @@ app.get('/health', async (req, res) => {
     res.status(503).json({ status: 'unhealthy', error: 'Redis connection issue' });
   }
 });
+
+
+///// prometheus
+register.setDefaultLabels({
+  service: 'product-service'
+});
+
+promClient.collectDefaultMetrics({ register });
+
+const httpRequestCounter = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['service', 'method', 'route', 'status']
+});
+
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request latency',
+  labelNames: ['service', 'method', 'route'],
+  buckets: [0.1, 0.3, 0.5, 1, 2, 5]
+});
+
+register.registerMetric(httpRequestCounter);
+register.registerMetric(httpRequestDuration);
+
+// ✅ middleware
+app.use((req, res, next) => {
+  if (req.path === '/metrics') return next(); 
+
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+
+    const route = req.route?.path || req.path || 'unknown';
+
+    httpRequestCounter.inc({
+      service: 'product-service',
+      method: req.method,
+      route,
+      status: res.statusCode
+    });
+
+    httpRequestDuration.observe(
+      {
+        service: 'product-service',
+        method: req.method,
+        route
+      },
+      duration
+    );
+  });
+
+  next();
+});
+
+
 // Helper function to update product ratings
 async function updateProductRatings(productId) {
   try {
@@ -258,10 +318,7 @@ app.post('/:id/update-ratings', async (req, res) => {
   }
 });
 
-// Prometheus metrics
-const promClient = require('prom-client');
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
+
 
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);

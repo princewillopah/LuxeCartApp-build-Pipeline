@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Analytics Service", version="1.0.0")
 
 # Prometheus metrics
-REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint', 'status'])
-REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request latency', ['method', 'endpoint'])
+REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['service', 'method', 'endpoint', 'status'])
+REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request latency', ['service', 'method', 'endpoint'])
 
 # CORS
 app.add_middleware(
@@ -48,8 +48,8 @@ async def track_metrics(request, call_next):
     response = await call_next(request)
     duration = time.time() - start_time
     
-    REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
-    REQUEST_LATENCY.labels(request.method, request.url.path).observe(duration)
+    REQUEST_COUNT.labels("analytics-service", request.method, request.url.path, response.status_code).inc()
+    REQUEST_LATENCY.labels("analytics-service", request.method, request.url.path).observe(duration)
     
     return response
 
