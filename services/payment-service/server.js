@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const { publishEvent } = require('./shared/eventBus');
-const promClient = require('prom-client');
 // Prometheus metrics
 const promClient = require('prom-client');
 const register = new promClient.Registry();
