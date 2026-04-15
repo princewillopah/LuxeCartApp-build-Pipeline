@@ -34,5 +34,5 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ${{ env.IMAGE_NAMESPACE }}/luxecart-frontend:1.0.8
+            ${{ env.IMAGE_NAMESPACE }}/luxecart-frontend:1.0.9
             ${{ env.IMAGE_NAMESPACE }}/luxecart-frontend:latest
