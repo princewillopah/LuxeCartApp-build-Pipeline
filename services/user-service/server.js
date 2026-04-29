@@ -49,6 +49,15 @@ const httpRequestDuration = new promClient.Histogram({
 register.registerMetric(httpRequestCounter);
 register.registerMetric(httpRequestDuration);
 
+
+
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+
+
 // ✅ middleware
 app.use((req, res, next) => {
   if (req.path === '/metrics') return next(); 
@@ -95,7 +104,7 @@ app.get('/', async (req, res) => {
 });
 
 // Get user by ID
-app.get('/:id', async (req, res) => {
+app.get('/:id(\\d+)', async (req, res) => {
   try {
     const result = await pool.query('SELECT id, email, first_name, last_name, role, phone, created_at FROM users WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -110,7 +119,7 @@ app.get('/:id', async (req, res) => {
 });
 
 // Update user
-app.put('/:id', async (req, res) => {
+app.put('/:id(\\d+)', async (req, res) => {
   try {
     const { firstName, lastName, phone } = req.body;
     const result = await pool.query(
@@ -129,7 +138,7 @@ app.put('/:id', async (req, res) => {
 });
 
 // Delete user - FIXED: complete implementation
-app.delete('/:id', async (req, res) => {
+app.delete('/:id(\\d+)', async (req, res) => {
   try {
     const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -141,10 +150,6 @@ app.delete('/:id', async (req, res) => {
 });
 
 
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

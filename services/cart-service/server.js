@@ -63,6 +63,12 @@ const httpRequestDuration = new promClient.Histogram({
 register.registerMetric(httpRequestCounter);
 register.registerMetric(httpRequestDuration);
 
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+
 // ✅ middleware
 app.use((req, res, next) => {
   if (req.path === '/metrics') return next(); 
@@ -204,10 +210,7 @@ app.delete('/:userId', async (req, res) => {
 
 
 
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
+
 
 // Start server (single instance, at EOF)
 app.listen(PORT, '0.0.0.0', () => {
